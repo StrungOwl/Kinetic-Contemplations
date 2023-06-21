@@ -75,7 +75,7 @@ function setup() {
 
   colorMode(HSB);
 
-  randomSeed(409); //208, 303!, 310, 312!
+  //randomSeed(409); //208, 303!, 310, 312!
 
   randomNumber = randomNumberGenerator(0, 100);
   console.log(randomNumber);
