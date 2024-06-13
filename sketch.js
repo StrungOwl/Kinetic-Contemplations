@@ -1,11 +1,21 @@
-//"Kinetic Contemplations"
-//By Sydney Parks
-//Music by Travis Hubbard and Sydney Parks
+//fix the randomness!!!!!
 
-//Description -
-//The idea for this project emerged after learning that snowflakes are made of hexagonal patterns.
-//The individuality of each snowflake reminded me of generative NFTs, prompting me to animate simple shapes in a way that emulates the natural flow of the world, and elicit an experience for the viewer that is contemplative, peaceful, and unexpected.
-//Using the buttons on the bottom right, the collector may control their experience by adding sound, color, or pausing motion. I am hoping that this piece can be a daily reminder to meditate, sit still, and be entranced by the simplicity within our intricate world.
+// "Kinetic Contemplations"
+// By Sydney Parks
+// Music by Travis Hubbard and Sydney Parks
+
+// Description -
+// "Kinetic Contemplations" is a mesmerizing NFT project created by Sydney Parks. Inspired by the discovery that snowflakes are formed by intricate hexagonal patterns, this project aims to capture the essence of that individuality. The artist has animated simple shapes in a manner that mimics the natural flow of the world, offering viewers a contemplative, peaceful, and unexpected experience.
+
+// Through interactive controls located in the bottom right corner, collectors have the power to shape their own experience with the artwork. They can add sound, infuse color, or pause the motion to create a personalized encounter. The intention behind this piece is to serve as a daily reminder to meditate, find stillness, and become enchanted by the simplicity found within our intricately designed world.
+
+// "Kinetic Contemplations" invites viewers to embrace the beauty and tranquility of nature's patterns, transcending the boundaries of the digital realm. With its captivating visuals and immersive interactivity, this NFT project encourages moments of reflection and serenity in an ever-moving world.
+
+// serial communication between a microcontroller with a switch on pin 2
+// arduino code can be found here : https://gist.github.com/shfitz/7fd206b7db4e0e6416a443d61c8c988e
+
+let serial; // variable for the serial object
+let latestData = "waiting for data"; // variable to hold the data
 
 let rotationAngle = 0; //angle of rotation
 let rotationSpeed = 0; //speed of rotation
@@ -46,12 +56,18 @@ let pauseButton, musicOffbutton, cancelButton;
 let colorEnabled = false;
 let soundEnabled = false;
 let pauseMovement = false;
+let restartPressed = false;
+let stopModeOn = false;
+let timerOn = false;
+let showMain = true;
+let counter = 0; //counter for saved images
+let displayTime = 4000; //time to display saved image
 
 //Make a boolean for shapes
 let shapeEnabled = false;
 
 function preload() {
-  chalkyFilter = loadImage("Chalky_loRes.png");
+  chalkyFilter = loadImage("chalky.png");
 
   playButton = loadImage("play.png");
   pauseButton = loadImage("pause.png");
@@ -69,16 +85,42 @@ function randomNumberGenerator(min, max) {
   return Math.floor(Math.random() * (max - min) + min);
 }
 
+// list the ports
+function gotList(thelist) {
+  console.log("List of Serial Ports:");
+
+  for (let i = 0; i < thelist.length; i++) {
+    console.log(i + " " + thelist[i]);
+  }
+}
+
+// when data is received in the serial buffer
+
+function gotData() {
+  let currentString = serial.readLine(); // store the data in a variable
+  trim(currentString); // get rid of whitespace
+  if (!currentString) return; // if there's nothing in there, ignore it
+  console.log(currentString); // print it out
+  latestData = currentString; // save it to the global variable
+}
+
 function setup() {
-  // createCanvas(1080, 1080);
+  //createCanvas(1080, 1080);
   createCanvas(window.innerWidth, window.innerHeight);
+  // serial constructor
+  serial = new p5.SerialPort();
+  // get a list of all connected serial devices
+  serial.list();
+  serial.open("COM4");
+  serial.on("list", gotList);
+  serial.on("data", gotData);
+
+  //randomSeed(seedInfo); //Need this for metaversis
 
   colorMode(HSB);
 
-  //randomSeed(409); //208, 303!, 310, 312!
-
   randomNumber = randomNumberGenerator(0, 100);
-  console.log(randomNumber);
+  // console.log(randomNumber);
 
   chalkyFilter.resize(width, height);
 
@@ -114,30 +156,59 @@ function setup() {
   //SOUND -----------------------------
 
   //ENABLE SOUND WITH BUTTON
-  if (soundEnabled) {
-    soundFile.loop();
-  } else {
-    soundFile.pause();
-  }
+//   if (soundEnabled) {
+//     soundFile.loop();
+//     latestData = "0";
+//   } else {
+//     soundFile.pause();
+//     latestData = "0";
+//   }
 }
 
+//MAKE RANDOM BE ONLY IN SETUP FUNCTION!
+
 function draw() {
+  console.log(latestData);
+
+  if(showMain){
   //BACKGROUND -------------------------------------------
   rectMode(CENTER);
   noStroke();
   fill(h1, s1, b1, 0.05);
   rect(width / 2, height / 2, width, height);
 
-  if (!pauseMovement) {
-    // Code that should only run when not paused
+  // Code that should only run when not paused
 
+  //RANDOM FRAME
+  if (randomNumber <= 50) {
+    //FRAME -------------------------------------------
+    frame();
+  }
+
+  //DRAW THE SHAPES AND MAKE THEM ROTATE-----------------------
+
+  for (let i = 0; i < numShapes; i += 0.3) {
+    //change to 2 and +=0.3
+    let size = radius + i * space; // Compute the size based on the iteration
+
+    push();
+    shapeSize = noise(xoff) * size;
+    circleSize = noise(xoff * 3) * width * 0.1;
+    translate(width / 2, height / 2);
+    rotate(rotationAngle * i);
+    drawShape3(i, i, shapeSize); //shadow
+    drawShape(i, i, shapeSize);
+    pop();
+  }
+
+  if (randomNumber >= 50) {
     //RANDOM FRAME
-    if (randomNumber <= 25) {
+    if (randomNumber >= 75) {
       //FRAME -------------------------------------------
       frame();
     }
 
-    //DRAW THE SHAPES AND MAKE THEM ROTATE-----------------------
+    //DRAW THE SHAPES2 AND MAKE THEM ROTATE-----------------------
 
     for (let i = 0; i < numShapes; i += 0.3) {
       //change to 2 and +=0.3
@@ -147,35 +218,12 @@ function draw() {
       shapeSize = noise(xoff) * size;
       circleSize = noise(xoff * 3) * width * 0.1;
       translate(width / 2, height / 2);
-      rotate(rotationAngle * i);
-      drawShape3(i, i, shapeSize); //shadow
-      drawShape(i, i, shapeSize);
+      rotate(-rotationAngle * i);
+      drawShape2(i, i, shapeSize);
       pop();
     }
-
-    if (randomNumber >= 50) {
-      //RANDOM FRAME
-      if (randomNumber >= 75) {
-        //FRAME -------------------------------------------
-        frame();
-      }
-
-      //DRAW THE SHAPES2 AND MAKE THEM ROTATE-----------------------
-
-      for (let i = 0; i < numShapes; i += 0.3) {
-        //change to 2 and +=0.3
-        let size = radius + i * space; // Compute the size based on the iteration
-
-        push();
-        shapeSize = noise(xoff) * size;
-        circleSize = noise(xoff * 3) * width * 0.1;
-        translate(width / 2, height / 2);
-        rotate(-rotationAngle * i);
-        drawShape2(i, i, shapeSize);
-        pop();
-      }
-    }
-
+  }
+  if (!pauseMovement) {
     //ANIMATE -------------------------------------------------
 
     xoff += 0.003; //random between 0.01, 0.003
@@ -197,13 +245,107 @@ function draw() {
     // Blend the image onto your sketch
     blend(chalkyFilter, 0, 0, width, height, 0, 0, width, height, LIGHTEST); //LIGHTEST, DODGE
   }
+}
+
+    //STOP MODE------------------------------
+    if (stopModeOn && !timerOn) {
+
+        //capture canvas as image 
+        savedImage = get();
+        saveCanvas("creativeHand" + counter, "png");
+        counter ++; //increment for next save
+         // Load the saved image into the savedImage variable
+         displaySavedImage(); 
+         latestData = "0";
+         stopModeOn = false; 
+  
+      }
 
   //BUTTON -------------------------------
-  drawButton();
-  drawButton2();
-  drawButton3();
-  
+//   drawButton();
+//   drawButton2();
+//   drawButton3();
+
+if (latestData == "1") {
+    colorEnabled = !colorEnabled;
+  } else if (latestData == "2") {
+    pauseMovement = !pauseMovement;
+  } else if (latestData == "3") {
+    soundEnabled = !soundEnabled;
+    if (soundEnabled) {
+      soundFile.loop();
+      latestData = "0";
+    } else {
+      soundFile.pause();
+      latestData = "0";
+      soundEnabled = false;
+    }
+  } else if (latestData == "4") {
+    restartPressed = !restartPressed;
+    if (restartPressed) {
+      setup();
+      latestData = "0";
+      restartPressed = false;
+    }
+  } else if (latestData == "5") {
+    stopModeOn = !stopModeOn;
+  }
+
+
 }
+
+function keyPressed() {
+  if (key == "a" || key == "A") {
+    colorEnabled = !colorEnabled;
+  } else if (key == "s" || key == "S") {
+    pauseMovement = !pauseMovement;
+  } else if (key == "f" || key == "F") {
+    soundEnabled = !soundEnabled;
+    if (soundEnabled) {
+      soundFile.loop();
+      latestData = "0";
+    } else {
+      soundFile.pause();
+      latestData = "0";
+      soundEnabled = false;
+    }
+  } else if (key == "d" || key == "D") {
+    restartPressed = !restartPressed;
+    if (restartPressed) {
+      setup();
+      latestData = "0";
+      restartPressed = false;
+    }
+  } else if (key == "x" || key == "X") {
+    stopModeOn = !stopModeOn;
+  }
+}
+
+function displaySavedImage() {
+
+   showMain = false; 
+   // background(0);
+  
+    //pg.background(255);  
+  
+    //let imgW = pgWidth*0.9;
+    //let imgH = pgHeight*0.9; 
+    //let imageX = 0 - imgW/2; // correct
+    //let imageY = 0 - imgH/2; 
+    imageMode(CENTER);
+    image(savedImage, width/2, height/2, width/1.5, height/1.5);
+    //image(pg, 0, 0); //x y 
+    // Draw the saved image onto the canvas
+    // Set a timer to reset the drawing after 3 seconds
+    timerOn = true;
+    //pauseMovement = true;
+    timer = setTimeout(() => {
+      timerOn = false;
+      showMain = true;
+    }, displayTime);
+    
+  }
+  
 
 //CREATE THE SHAPES --------------------------------------
 
@@ -231,8 +373,10 @@ function drawShape(x, y) {
     //ENABLE COLOR WITH BUTTON
     if (colorEnabled) {
       fill(colorValue, 80, brightness, 0.05);
+      latestData = "0";
     } else {
       noFill();
+      latestData = "0";
     }
 
     vertex(hx, hy);
