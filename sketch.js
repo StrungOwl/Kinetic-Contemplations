@@ -62,6 +62,9 @@ let timerOn = false;
 let showMain = true;
 let counter = 0; //counter for saved images
 let displayTime = 4000; //time to display saved image
+let globeScale; 
+let offset; //draw shape 3
+let halfHeight, halfWidth;
 
 //Make a boolean for shapes
 let shapeEnabled = false;
@@ -78,20 +81,11 @@ function preload() {
 
   //SOUND
   soundFormats("mp3");
-  soundFile = loadSound("Soundscape V3.mp3");
+  soundFile = loadSound("Sydney Kinetic Soundscape.mp3");
 }
 
 function randomNumberGenerator(min, max) {
   return Math.floor(Math.random() * (max - min) + min);
-}
-
-// list the ports
-function gotList(thelist) {
-  console.log("List of Serial Ports:");
-
-  for (let i = 0; i < thelist.length; i++) {
-    console.log(i + " " + thelist[i]);
-  }
 }
 
 // when data is received in the serial buffer
@@ -107,30 +101,34 @@ function gotData() {
 function setup() {
   //createCanvas(1080, 1080);
   createCanvas(window.innerWidth, window.innerHeight);
+  globeScale = min(width, height); 
   // serial constructor
   serial = new p5.SerialPort();
   // get a list of all connected serial devices
   serial.list();
   serial.open("COM4");
-  serial.on("list", gotList);
   serial.on("data", gotData);
 
   //randomSeed(seedInfo); //Need this for metaversis
 
   colorMode(HSB);
 
+  halfWidth = width / 2;
+  halfHeight = height / 2;
+  offset = width * 0.003; 
   randomNumber = randomNumberGenerator(0, 100);
   // console.log(randomNumber);
+  ranCircSize = random(globeScale * 0.1, globeScale*0.3); 
 
   chalkyFilter.resize(width, height);
 
   //VARIABLE THAT ARE RANDOM
-
-  rotationSpeed = 0.006; //keep at constant no matter what screen it's on
+  rotationSpeed = random(0.004, 0.01);
+ // rotationSpeed = 0.006; //keep at constant no matter what screen it's on
   //If numShapes is greater than a certain # then slow it down
-  if (numShapes >= 6) {
-    rotationSpeed = 0.004;
-  }
+  // if (numShapes >= 6) {
+  //   rotationSpeed = 0.004;
+  // }
   //rotationSpeed = width * 0.000004; //Keep rotation speed constant
 
   radius = random(width * 0.02, width * 0.3);
@@ -170,82 +168,55 @@ function setup() {
 function draw() {
   console.log(latestData);
 
-  if(showMain){
-  //BACKGROUND -------------------------------------------
-  rectMode(CENTER);
-  noStroke();
-  fill(h1, s1, b1, 0.05);
-  rect(width / 2, height / 2, width, height);
+ if (showMain) {
+    //BACKGROUND -------------------------------------------
+    rectMode(CENTER);
+    noStroke();
+    fill(h1, s1, b1, 0.05);
+    rect(width / 2, height / 2, width, globeScale);
 
-  // Code that should only run when not paused
-
-  //RANDOM FRAME
-  if (randomNumber <= 50) {
-    //FRAME -------------------------------------------
-    frame();
-  }
-
-  //DRAW THE SHAPES AND MAKE THEM ROTATE-----------------------
-
-  for (let i = 0; i < numShapes; i += 0.3) {
-    //change to 2 and +=0.3
-    let size = radius + i * space; // Compute the size based on the iteration
-
-    push();
-    shapeSize = noise(xoff) * size;
-    circleSize = noise(xoff * 3) * width * 0.1;
-    translate(width / 2, height / 2);
-    rotate(rotationAngle * i);
-    drawShape3(i, i, shapeSize); //shadow
-    drawShape(i, i, shapeSize);
-    pop();
-  }
-
-  if (randomNumber >= 50) {
     //RANDOM FRAME
-    if (randomNumber >= 75) {
-      //FRAME -------------------------------------------
+    if (randomNumber <= 50 || randomNumber >= 75) {
       frame();
     }
 
-    //DRAW THE SHAPES2 AND MAKE THEM ROTATE-----------------------
-
+    //DRAW THE SHAPES AND MAKE THEM ROTATE-----------------------
     for (let i = 0; i < numShapes; i += 0.3) {
-      //change to 2 and +=0.3
       let size = radius + i * space; // Compute the size based on the iteration
 
       push();
       shapeSize = noise(xoff) * size;
-      circleSize = noise(xoff * 3) * width * 0.1;
+      circleSize = noise(xoff * 3) * (randomNumber >= 50 ? width * 0.1 : ranCircSize);
       translate(width / 2, height / 2);
-      rotate(-rotationAngle * i);
-      drawShape2(i, i, shapeSize);
+      rotate((randomNumber >= 50 ? -1 : 1) * rotationAngle * i);
+
+      if (randomNumber <= 50) {
+        drawShape3(i, i, shapeSize); //shadow
+        drawShape(i, i, shapeSize);
+      } else {
+        drawShape2(i, i, shapeSize);
+      }
+
       pop();
     }
-  }
-  if (!pauseMovement) {
-    //ANIMATE -------------------------------------------------
 
-    xoff += 0.003; //random between 0.01, 0.003
+    if (!pauseMovement) {
+      //ANIMATE -------------------------------------------------
+      xoff += 0.003; //random between 0.01, 0.003
+      rotationAngle += rotationSpeed;
 
-    //Update the rotation
-    rotationAngle += rotationSpeed;
+      if (numShapes >= 6) {
+        c += 1;
+        c = c % 360;
+      } else {
+        c += 0.05;
+        c = c % 360;
+      }
 
-    //if the shape number increases then the speed of c increases
-    if (numShapes >= 6) {
-      c += 1;
-      c = c % 360;
-    } else {
-      c += 0.05;
-      c = c % 360;
+      //CREATE A FILTER ------------------------------------------
+      blend(chalkyFilter, 0, 0, width, height, 0, 0, width, height, LIGHTEST); //LIGHTEST, DODGE
     }
-
-    //CREATE A FILTER ------------------------------------------
-
-    // Blend the image onto your sketch
-    blend(chalkyFilter, 0, 0, width, height, 0, 0, width, height, LIGHTEST); //LIGHTEST, DODGE
   }
-}
 
     //STOP MODE------------------------------
     if (stopModeOn && !timerOn) {
@@ -324,19 +295,10 @@ function keyPressed() {
 function displaySavedImage() {
 
    showMain = false; 
-   // background(0);
-  
-    //pg.background(255);  
-  
-    //let imgW = pgWidth*0.9;
-    //let imgH = pgHeight*0.9; 
-    //let imageX = 0 - imgW/2; // correct
-    //let imageY = 0 - imgH/2; 
+   
     imageMode(CENTER);
     image(savedImage, width/2, height/2, width/1.5, height/1.5);
-    //image(pg, 0, 0); //x y 
-    // Draw the saved image onto the canvas
-    // Set a timer to reset the drawing after 3 seconds
+  
     timerOn = true;
     //pauseMovement = true;
     timer = setTimeout(() => {
@@ -354,7 +316,7 @@ function drawShape(x, y) {
   translate(x, y);
 
   beginShape();
-  for (let i = 0; i < sideNum; i++) {
+  for (let i = 0; i < sideNum - 1; i++) {
     //change both of the numbers to change # of sides
     let angle = (i * TWO_PI) / sideNum;
     let hx = cos(angle) * shapeSize;
@@ -362,9 +324,9 @@ function drawShape(x, y) {
 
     //CREATE CHANGE IN BRIGHTNESS AND COLOR-----------------------
     //map distnace of shapes from cente
-    let distance = dist(hx, hy, width / 2, height / 2);
+    let distance = dist(hx, hy, halfWidth, halfHeight);
     // Calculate the brightness based on the distance
-    let brightness = map(distance, 0, width / 2, 0, 100);
+    let brightness = map(distance, 0, halfWidth, 0, 100);
     let colorValue = (c + hx + hy) % 360; // Adjust the color value to create variation
 
     stroke(h, s, b, a); //stroke color
@@ -380,7 +342,6 @@ function drawShape(x, y) {
     }
 
     vertex(hx, hy);
-    //curveVertex(hx, hy);
 
     circle(hx, hy, circleSize); //Make circleSize hx for fun
   }
@@ -403,9 +364,9 @@ function drawShape2(x2, y2) {
 
     //CREATE CHANGE IN BRIGHTNESS AND COLOR-----------------------
     //map distnace of shapes from cente
-    let distance2 = dist(hx2, hy2, width / 2, height / 2);
+    let distance2 = dist(hx2, hy2, halfWidth, halfHeight);
     // Calculate the brightness based on the distance
-    let brightness2 = map(distance2, 0, width / 2, 0, 100);
+    let brightness2 = map(distance2, 0, halfWidth, 0, 100);
     let colorValue2 = (c + hx2 + hy2) % 360; // Adjust the color value to create variation
 
     stroke(h / 2, s / 2, b / 2, a); //stroke color divide all by 2 again
@@ -431,7 +392,7 @@ function drawShape2(x2, y2) {
 //Draw a shape that acts like a shadow
 function drawShape3(x2, y2) {
   push();
-  translate(x2 - width * 0.003, y2 - width * 0.003); //offset
+  translate(x2 - offset, y2 - offset); //offset
   noFill();
 
   beginShape();
@@ -441,13 +402,6 @@ function drawShape3(x2, y2) {
     let angle = (i * TWO_PI) / sideNum;
     let hx2 = cos(angle) * shapeSize;
     let hy2 = sin(angle) * shapeSize;
-
-    //CREATE CHANGE IN BRIGHTNESS AND COLOR-----------------------
-    //map distnace of shapes from cente
-    let distance2 = dist(hx2, hy2, width / 2, height / 2);
-    // Calculate the brightness based on the distance
-    let brightness2 = map(distance2, 0, width / 2, 0, 100);
-    let colorValue2 = (c + hx2 + hy2) % 360; // Adjust the color value to create variation
 
     stroke(h, s, b / 3, a / 4); //stroke color divide all by 2 again
     strokeWeight(strokeW); //divide by 2 again
@@ -478,117 +432,4 @@ function frame() {
   pop();
 }
 
-//CREATE A BUTTON FOR COLOR-------------------------------------------
-function drawButton() {
-  push();
-  let buttonSize = 50;
-  let buttonX = width - buttonSize - 10;
-  let buttonY = height - buttonSize - 10;
 
-  // Draw the button shape
-  fill(10);
-  stroke(100, 0.5);
-  ellipse(buttonX, buttonY, buttonSize, buttonSize);
-
-  // Draw the text on the button
-  imageMode(CENTER);
-  image(colorEnabled ? cancelButton : colorButton, buttonX, buttonY);
-  //text(colorEnabled ? "off" : "on", buttonX, buttonY);
-  pop();
-}
-
-//SECOND BUTTON FOR MUSIC----------------------------
-function drawButton2() {
-  push();
-  let buttonSize2 = 50;
-  let buttonX2 = width - buttonSize2 - 70;
-  let buttonY2 = height - buttonSize2 - 10;
-
-  // Draw the button shape
-  fill(10);
-  stroke(100, 0.5);
-  ellipse(buttonX2, buttonY2, buttonSize2, buttonSize2);
-
-  // Draw the text on the button
-  imageMode(CENTER);
-  image(soundEnabled ? musicOffButton : musicButton, buttonX2, buttonY2);
-  pop();
-}
-
-//THIRD BUTTON FOR PAUSING ANIMATION----------------------------
-function drawButton3() {
-  push();
-  let buttonSize3 = 50;
-  let buttonX3 = width - buttonSize3 - 130;
-  let buttonY3 = height - buttonSize3 - 10;
-
-  // Draw the button shape
-  fill(10);
-  stroke(100, 0.5);
-  ellipse(buttonX3, buttonY3, buttonSize3, buttonSize3);
-
-  // Draw the text on the button
-  // Draw the text on the button
-  imageMode(CENTER);
-  image(pauseMovement ? playButton : pauseButton, buttonX3, buttonY3);
-  pop();
-}
-
-function mousePressed() {
-  // Check if the mouse is within the button area
-  let buttonSize = 50;
-  let buttonX = width - buttonSize - 35;
-  let buttonY = height - buttonSize - 35;
-  if (
-    mouseX > buttonX &&
-    mouseX < buttonX + buttonSize &&
-    mouseY > buttonY &&
-    mouseY < buttonY + buttonSize
-  ) {
-    // Toggle the color state
-    colorEnabled = !colorEnabled;
-  }
-
-  //SOUND ------------------------------------------
-
-  // Check if the mouse is within the button area
-  let buttonSize2 = 50;
-  let buttonX2 = width - buttonSize2 - 100;
-  let buttonY2 = height - buttonSize2 - 40;
-  if (
-    mouseX > buttonX2 &&
-    mouseX < buttonX2 + buttonSize2 &&
-    mouseY > buttonY2 &&
-    mouseY < buttonY2 + buttonSize2
-  ) {
-    if (soundEnabled) {
-      soundFile.pause(); // Pause the sound file
-    } else {
-      soundFile.loop(); // Resume playing the sound file
-    }
-
-    soundEnabled = !soundEnabled; // Toggle the play state
-  }
-
-  //MOVEMENT ------------------------------------------
-  // Check if the mouse is within the button area
-  let buttonSize3 = 50;
-  let buttonX3 = width - buttonSize3 - 160;
-  let buttonY3 = height - buttonSize3 - 40;
-  if (
-    mouseX > buttonX3 &&
-    mouseX < buttonX3 + buttonSize3 &&
-    mouseY > buttonY3 &&
-    mouseY < buttonY3 + buttonSize3
-  ) {
-    if (pauseMovement) {
-      loop(); // Resume the draw loop
-      pauseMovement = false;
-    } else {
-      noLoop(); // Pause the draw loop
-      pauseMovement = true;
-    }
-  }
-
-  return false; //This debugs errors when touching on devices
-}
