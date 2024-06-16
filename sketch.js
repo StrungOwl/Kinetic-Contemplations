@@ -1,4 +1,4 @@
-//fix the randomness!!!!!
+//MUST CLICK ON SCREEN FOR SOUND
 
 // "Kinetic Contemplations"
 // By Sydney Parks
@@ -33,6 +33,9 @@ let strokeW; //stroke weight
 
 let xoff = 0; //speed of noise movement
 let space; //space between each shape
+let x = 0;
+let y = 0; 
+let angle2 = 0; 
 
 let sideNum; //number of sides on the shape
 
@@ -65,6 +68,8 @@ let displayTime = 4000; //time to display saved image
 let globeScale; 
 let offset; //draw shape 3
 let halfHeight, halfWidth;
+let moveScale; //draw function for loop 
+let audioStarted = false; 
 
 //Make a boolean for shapes
 let shapeEnabled = false;
@@ -106,7 +111,7 @@ function setup() {
   serial = new p5.SerialPort();
   // get a list of all connected serial devices
   serial.list();
-  serial.open("COM4");
+  serial.open("/dev/tty.usbmodem1421");
   serial.on("data", gotData);
 
   //randomSeed(seedInfo); //Need this for metaversis
@@ -115,26 +120,32 @@ function setup() {
 
   halfWidth = width / 2;
   halfHeight = height / 2;
+
+  if(Math.random() <= 0.3) //30%
+  moveScale = random(7, 10);  //wiggle amount 
+  else {
+    moveScale = random(5, 7); //wiggle amt 
+  }
+  
   offset = width * 0.003; 
   randomNumber = randomNumberGenerator(0, 100);
-  // console.log(randomNumber);
   ranCircSize = random(globeScale * 0.1, globeScale*0.3); 
 
   chalkyFilter.resize(width, height);
 
   //VARIABLE THAT ARE RANDOM
-  rotationSpeed = random(0.004, 0.01);
+  //rotationSpeed = random(globeScale*0.00001, globeScale*0.01);
+  rotationSpeed = globeScale*0.00001; 
  // rotationSpeed = 0.006; //keep at constant no matter what screen it's on
   //If numShapes is greater than a certain # then slow it down
   // if (numShapes >= 6) {
   //   rotationSpeed = 0.004;
   // }
-  //rotationSpeed = width * 0.000004; //Keep rotation speed constant
 
   radius = random(width * 0.02, width * 0.3);
   space = random(width * 0.01, width * 0.4);
   strokeW = random(width * 0.0001, width * 0.005);
-  sideNum = random(1, 9); //def 1 to
+  sideNum = random(2, 9); //def 1 to
 
   h = random(0, 360); // hue of stroke
   s = random(0, 100); //saturation of stroke
@@ -173,7 +184,7 @@ function draw() {
     rectMode(CENTER);
     noStroke();
     fill(h1, s1, b1, 0.05);
-    rect(width / 2, height / 2, width, globeScale);
+    rect(width / 2, height / 2, width, height);
 
     //RANDOM FRAME
     if (randomNumber <= 50 || randomNumber >= 75) {
@@ -189,18 +200,27 @@ function draw() {
       circleSize = noise(xoff * 3) * (randomNumber >= 50 ? width * 0.1 : ranCircSize);
       translate(width / 2, height / 2);
       rotate((randomNumber >= 50 ? -1 : 1) * rotationAngle * i);
-
+     
       if (randomNumber <= 50) {
-        drawShape3(i, i, shapeSize); //shadow
-        drawShape(i, i, shapeSize);
+        drawShape3(x, y, shapeSize); //shadow
+        drawShape(x, y, shapeSize);
       } else {
-        drawShape2(i, i, shapeSize);
+        drawShape2(x, y, shapeSize);
+      }
+
+      if(pauseMovement){
+        x = cos(angle2)*moveScale;
+        y = sin(angle2)*moveScale;
+        angle2 += 1;
+      } else {
+        x = i;
+        y = i; 
       }
 
       pop();
     }
 
-    if (!pauseMovement) {
+    //if (!pauseMovement) {
       //ANIMATE -------------------------------------------------
       xoff += 0.003; //random between 0.01, 0.003
       rotationAngle += rotationSpeed;
@@ -215,7 +235,7 @@ function draw() {
 
       //CREATE A FILTER ------------------------------------------
       blend(chalkyFilter, 0, 0, width, height, 0, 0, width, height, LIGHTEST); //LIGHTEST, DODGE
-    }
+    //}
   }
 
     //STOP MODE------------------------------
@@ -231,26 +251,16 @@ function draw() {
          stopModeOn = false; 
   
       }
-
-  //BUTTON -------------------------------
-//   drawButton();
-//   drawButton2();
-//   drawButton3();
+      
 
 if (latestData == "1") {
     colorEnabled = !colorEnabled;
+    latestData = "0"; 
   } else if (latestData == "2") {
     pauseMovement = !pauseMovement;
+    latestData = "0"; 
   } else if (latestData == "3") {
-    soundEnabled = !soundEnabled;
-    if (soundEnabled) {
-      soundFile.loop();
-      latestData = "0";
-    } else {
-      soundFile.pause();
-      latestData = "0";
-      soundEnabled = false;
-    }
+    audioStarted = !audioStarted;
   } else if (latestData == "4") {
     restartPressed = !restartPressed;
     if (restartPressed) {
@@ -262,7 +272,24 @@ if (latestData == "1") {
     stopModeOn = !stopModeOn;
   }
 
+   // Control audio playback based on the audioStarted variable
+   if (audioStarted) {
+    if (!soundFile.isPlaying()) {
+      soundFile.loop();  // Start looping the sound if it is not already playing
+    }
+    latestData = "0";
+  } else {
+    if (soundFile.isPlaying()) {
+      soundFile.pause();  // Pause the sound if it is playing
+    }
+    latestData = "0";
+  }
 
+
+}
+
+function mousePressed() {
+  audioStarted = !audioStarted;
 }
 
 function keyPressed() {
@@ -271,15 +298,7 @@ function keyPressed() {
   } else if (key == "s" || key == "S") {
     pauseMovement = !pauseMovement;
   } else if (key == "f" || key == "F") {
-    soundEnabled = !soundEnabled;
-    if (soundEnabled) {
-      soundFile.loop();
-      latestData = "0";
-    } else {
-      soundFile.pause();
-      latestData = "0";
-      soundEnabled = false;
-    }
+    audioStarted = !audioStarted;
   } else if (key == "d" || key == "D") {
     restartPressed = !restartPressed;
     if (restartPressed) {
@@ -335,10 +354,8 @@ function drawShape(x, y) {
     //ENABLE COLOR WITH BUTTON
     if (colorEnabled) {
       fill(colorValue, 80, brightness, 0.05);
-      latestData = "0";
     } else {
       noFill();
-      latestData = "0";
     }
 
     vertex(hx, hy);
